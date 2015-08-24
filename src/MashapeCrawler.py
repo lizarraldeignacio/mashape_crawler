@@ -6,9 +6,8 @@ import re
 import sqlite3
 from bs4 import BeautifulSoup
 
-SERVICE_AVAILABLE_PAGES = 72
-#
-# Number of available service list pages + 1 (This should be changed for something dynamic)
+SERVICE_AVAILABLE_PAGES = 72  # Number of available service list pages + 1 (This should be changed)
+START_FROM = 42  # Starting page
 
 
 class MashapeCrawler(object):
@@ -21,8 +20,7 @@ class MashapeCrawler(object):
         self._http = urllib3.PoolManager()
 
     def parse(self, html):
-        #
-        #  Mashape HTML Parser
+        """Mashape HTML Parser"""
         soup = BeautifulSoup(html, 'html.parser')
         for tag in soup.find_all('a'):
             if (tag.get('data-driver') is not None) and \
@@ -30,8 +28,7 @@ class MashapeCrawler(object):
                 self.get_service_information(tag.get('href'))
 
     def get_service_information(self, link):
-        #
-        # Obtains service's information
+        """Obtains service's information"""
         request = self._http.request('GET', link)
         soup = BeautifulSoup(request.data, 'html.parser')
         service_category = None
@@ -115,11 +112,10 @@ class MashapeCrawler(object):
 
 
 def main():
-    #
-    # Main function
+    """Main function"""
     http = urllib3.PoolManager()
     crawler = MashapeCrawler('mashape-dataset.db')
-    for i in range(42, SERVICE_AVAILABLE_PAGES):
+    for i in range(START_FROM, SERVICE_AVAILABLE_PAGES):
         print 'Page ' + str(i) + ' from ' + str(SERVICE_AVAILABLE_PAGES - 1)
         request = http.request('GET', 'https://www.mashape.com/explore?page=' + str(i))
         crawler.parse(request.data)
