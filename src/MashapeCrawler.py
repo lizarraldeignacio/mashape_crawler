@@ -6,8 +6,8 @@ import re
 import sqlite3
 from bs4 import BeautifulSoup
 
-SERVICE_AVAILABLE_PAGES = 72  # Number of available service list pages + 1 (This should be changed)
-START_FROM = 42  # Starting page
+SERVICE_AVAILABLE_PAGES = 92  # Number of available service list pages + 1 (This should be changed)
+START_FROM = 1  # Starting page
 
 
 class MashapeCrawler(object):
@@ -33,6 +33,7 @@ class MashapeCrawler(object):
         soup = BeautifulSoup(request.data, 'html.parser')
         service_category = None
         service_description = None
+        service_creation_date = None
         service_existence = False
         for tag in soup.find_all('h1'):
             if (tag.get('data-driver') is not None) and \
@@ -49,6 +50,10 @@ class MashapeCrawler(object):
             if (tag.get('data-driver') is not None) and \
                     (tag.get('data-driver') == 'api-description'):
                 service_description = tag.string
+        for tag in soup.find_all('span'):
+            if tag.string is not None:
+                if "Created:" in tag.string:
+                    service_creation_date = tag.string.split(':')[1].strip()
         for tag in soup.find_all('script'):
             if tag.string is not None:
                 match = re.search('Mashape.Store(.*?).p.mashape.com', tag.string, re.DOTALL)
@@ -63,8 +68,8 @@ class MashapeCrawler(object):
                         endpoint_section_split = match.group(0).split('%22')
                         endpoint = "https://" + endpoint_section_split[len(endpoint_section_split) - 3]
         print endpoint
-        service_row = [service_name, service_category, service_description]
-        self._data_base_cursor.execute('INSERT INTO services (Name, Category, Description) VALUES (?, ?, ?)',
+        service_row = [service_name, service_category, service_description, service_creation_date]
+        self._data_base_cursor.execute('INSERT INTO services (Name, Category, Description, Created) VALUES (?, ?, ?, ?)',
                                        service_row)
         self._data_base_cursor.execute('SELECT MAX(ID) FROM services')
         service_id = int(self._data_base_cursor.fetchone()[0])
@@ -74,7 +79,7 @@ class MashapeCrawler(object):
                 request = None
                 while (request is None) or (request.status is not 200):
                     request = self._http.request('GET',
-                                                 'https://www.mashape.com/api/internal/' + data_owner_slug + '/apis/' + tag.get(
+                                                 'https://market.mashape.com/api/internal/' + data_owner_slug + '/apis/' + tag.get(
                                                      'data-api-id') + '/current')
                 json_data = json.loads(request.data)
                 first = True
@@ -117,7 +122,7 @@ def main():
     crawler = MashapeCrawler('mashape-dataset.db')
     for i in range(START_FROM, SERVICE_AVAILABLE_PAGES):
         print 'Page ' + str(i) + ' from ' + str(SERVICE_AVAILABLE_PAGES - 1)
-        request = http.request('GET', 'https://www.mashape.com/explore?page=' + str(i))
+        request = http.request('GET', 'https://market.mashape.com/api/internal/explore?page=' + str(i))
         crawler.parse(request.data)
 
 
